@@ -1,0 +1,9 @@
+.openneuro
+raw/
+derivatives/
+work/
+logs/
+*.log
+*.tmp
+tmp-bin/
+downloads/
