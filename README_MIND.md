@@ -31,7 +31,8 @@ instead of the original `-rpe_pair` topup workflow.
 
 - Linux machine with one of:
   - Docker, or
-  - Apptainer/Singularity
+  - Apptainer/Singularity, or
+  - native installs of MRtrix3, FSL, FreeSurfer, and ANTs
 - FreeSurfer license file
 - Local BIDS copy of the MiND dataset, or the equivalent DWI/T1w files
 - Container image:
@@ -46,6 +47,15 @@ Apptainer/Singularity:
 ./scripts/build_apptainer_image.sh sc-construction-using-msmt-csd.sif
 export SC_MSMT_CSD_SIF=$PWD/sc-construction-using-msmt-csd.sif
 ```
+
+No container runtime:
+```bash
+export CONTAINER_RUNTIME=native
+```
+
+Native mode requires all commands used by the pipeline to already be installed
+and available on `PATH`: MRtrix3, FSL, FreeSurfer, and ANTs. Run `preflight.sh`
+to see the exact missing commands.
 
 Set:
 

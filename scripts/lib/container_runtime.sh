@@ -9,6 +9,8 @@ container_runtime() {
     echo apptainer
   elif command -v singularity >/dev/null 2>&1; then
     echo singularity
+  elif command -v mrconvert >/dev/null 2>&1; then
+    echo native
   else
     echo none
   fi
@@ -24,6 +26,9 @@ container_image() {
     apptainer|singularity)
       echo "${SC_MSMT_CSD_SIF:-${APPTAINER_IMAGE:-sc-construction-using-msmt-csd.sif}}"
       ;;
+    native)
+      echo native
+      ;;
     *)
       echo ""
       ;;
@@ -36,7 +41,7 @@ container_exec() {
   image="$(container_image)"
 
   if [[ "$runtime" == none ]]; then
-    echo "No supported container runtime found. Install Docker, Apptainer, or Singularity." >&2
+    echo "No supported runtime found. Install Docker, Apptainer, Singularity, or native MRtrix/FSL/FreeSurfer/ANTs dependencies." >&2
     return 1
   fi
 
@@ -78,5 +83,58 @@ container_exec() {
       done
       singularity exec "${singularity_args[@]}" "$image" "$@"
       ;;
+    native)
+      local source_path target_path mode
+      for bind in "${binds[@]}"; do
+        IFS=: read -r source_path target_path mode <<< "$bind"
+        if [[ -z "${source_path:-}" || -z "${target_path:-}" ]]; then
+          echo "Invalid native bind: $bind" >&2
+          return 1
+        fi
+        if [[ -e "$target_path" && "$target_path" != "$source_path" ]]; then
+          echo "Native runtime target already exists and is not a symlink: $target_path" >&2
+          return 1
+        fi
+        mkdir -p "$(dirname "$target_path")"
+        ln -sfn "$source_path" "$target_path"
+      done
+      "$@"
+      ;;
   esac
+}
+
+native_dependency_check() {
+  local missing=0
+  local commands=(
+    mrconvert
+    dwidenoise
+    mrdegibbs
+    dwifslpreproc
+    dwibiascorrect
+    dwiextract
+    mrmath
+    N4BiasFieldCorrection
+    flirt
+    transformconvert
+    mrtransform
+    dwi2mask
+    dwi2response
+    dwi2fod
+    mtnormalise
+    5ttgen
+    tckgen
+    tcksift2
+    labelconvert
+    tck2connectome
+    recon-all
+  )
+  for cmd in "${commands[@]}"; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+      echo "OK: $cmd"
+    else
+      echo "MISSING: $cmd"
+      missing=1
+    fi
+  done
+  return "$missing"
 }

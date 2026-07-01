@@ -61,8 +61,16 @@ elif [[ "$RUNTIME" == apptainer || "$RUNTIME" == singularity ]]; then
     echo "Build it with: ./scripts/build_apptainer_image.sh $IMAGE"
     fail=1
   fi
+elif [[ "$RUNTIME" == native ]]; then
+  echo "OK: native runtime selected"
+  if native_dependency_check; then
+    echo "OK: native neuroimaging dependencies found"
+  else
+    fail=1
+  fi
 else
-  echo "MISSING: no supported container runtime found. Install Docker, Apptainer, or Singularity."
+  echo "MISSING: no supported runtime found."
+  echo "Install Docker/Apptainer/Singularity, or install native MRtrix/FSL/FreeSurfer/ANTs dependencies."
   fail=1
 fi
 
