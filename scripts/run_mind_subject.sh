@@ -46,6 +46,7 @@ RAW_DIR="${WORK_DIR}/raw/${SUBJECT_ID}_${SESSION_ID}"
 DERIV_DIR="${WORK_DIR}/derivatives/${SUBJECT_ID}_${SESSION_ID}"
 mkdir -p "$RAW_DIR" "$DERIV_DIR"
 
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] [1/14] Convert BIDS to MRtrix"
 "${SCRIPT_DIR}/prepare_raw_from_bids.sh" "$BIDS_DIR" "$SUBJECT_ID" "$SESSION_ID" "$RAW_DIR"
 
 export PE_DIR TCK_SELECT FS_OPENMP BIAS_BACKEND
