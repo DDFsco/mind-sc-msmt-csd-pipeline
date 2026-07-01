@@ -51,7 +51,7 @@ if [[ ! -f "${RAWDIR}/dwi.mif" || ! -f "${RAWDIR}/T1w.mif" ]]; then
 fi
 
 mkdir -p "$DERIVDIR"
-export SUBJECTS_DIR="${SUBJECTS_DIR:-${DERIVDIR}/subjects}"
+export SUBJECTS_DIR="${MIND_SUBJECTS_DIR:-${DERIVDIR}/subjects}"
 mkdir -p "$SUBJECTS_DIR"
 MRTRIX_FS_DEFAULT="$(find_mrtrix_fs_default)" || {
   echo "MRtrix fs_default.txt was not found. Set MRTRIX_FS_DEFAULT to its full path." >&2
@@ -59,6 +59,7 @@ MRTRIX_FS_DEFAULT="$(find_mrtrix_fs_default)" || {
 }
 
 progress 2 "FreeSurfer recon-all"
+echo "Using SUBJECTS_DIR=${SUBJECTS_DIR}"
 mrconvert "${RAWDIR}/T1w.mif" "${DERIVDIR}/T1w.nii" -force
 
 recon-all -s "${SUBJECTID}" -i "${DERIVDIR}/T1w.nii" -all -openmp "$FS_OPENMP"
