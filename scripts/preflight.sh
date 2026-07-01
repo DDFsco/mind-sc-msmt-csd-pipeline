@@ -9,7 +9,8 @@ fi
 BIDS_DIR=$1
 SUBJECT_ID="${2:-sub-mindb107}"
 SESSION_ID="${3:-ses-placebo}"
-IMAGE="${SC_MSMT_CSD_IMAGE:-martah/sc-construction-using-msmt-csd}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/container_runtime.sh"
 
 fail=0
 check_file() {
@@ -42,15 +43,26 @@ else
   fail=1
 fi
 
-if command -v docker >/dev/null 2>&1; then
+RUNTIME="$(container_runtime)"
+IMAGE="$(container_image)"
+if [[ "$RUNTIME" == docker ]]; then
   echo "OK: docker executable found"
   if docker image inspect "$IMAGE" >/dev/null 2>&1; then
     echo "OK: Docker image present: $IMAGE"
   else
     echo "WARN: Docker image not present locally. Run: docker pull $IMAGE"
   fi
+elif [[ "$RUNTIME" == apptainer || "$RUNTIME" == singularity ]]; then
+  echo "OK: $RUNTIME executable found"
+  if [[ -f "$IMAGE" ]]; then
+    echo "OK: Apptainer/Singularity image present: $IMAGE"
+  else
+    echo "MISSING: Apptainer/Singularity image not found: $IMAGE"
+    echo "Build it with: ./scripts/build_apptainer_image.sh $IMAGE"
+    fail=1
+  fi
 else
-  echo "MISSING: docker executable not found."
+  echo "MISSING: no supported container runtime found. Install Docker, Apptainer, or Singularity."
   fail=1
 fi
 

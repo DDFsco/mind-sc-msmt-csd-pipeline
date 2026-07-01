@@ -29,13 +29,22 @@ instead of the original `-rpe_pair` topup workflow.
 
 ## Requirements
 
-- Linux machine with Docker
+- Linux machine with one of:
+  - Docker, or
+  - Apptainer/Singularity
 - FreeSurfer license file
 - Local BIDS copy of the MiND dataset, or the equivalent DWI/T1w files
-- Docker image:
+- Container image:
 
+Docker:
 ```bash
 docker pull martah/sc-construction-using-msmt-csd
+```
+
+Apptainer/Singularity:
+```bash
+./scripts/build_apptainer_image.sh sc-construction-using-msmt-csd.sif
+export SC_MSMT_CSD_SIF=$PWD/sc-construction-using-msmt-csd.sif
 ```
 
 Set:
@@ -71,7 +80,8 @@ bval, and JSON sidecar files.
 ```
 
 This checks that Docker, FreeSurfer license, DWI files, and T1w input are
-available.
+available. If Docker is not installed, it checks for Apptainer/Singularity and
+for the `.sif` image configured by `SC_MSMT_CSD_SIF`.
 
 ## Run One Subject
 

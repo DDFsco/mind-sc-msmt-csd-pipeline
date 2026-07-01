@@ -1,10 +1,15 @@
 # Linux quickstart
 
 ```bash
-git clone <your-github-url>/mind-sc-msmt-csd-pipeline.git
+git clone https://github.com/DDFsco/mind-sc-msmt-csd-pipeline.git
 cd mind-sc-msmt-csd-pipeline
 
-docker pull martah/sc-construction-using-msmt-csd
+# If Docker is available:
+# docker pull martah/sc-construction-using-msmt-csd
+
+# If Docker is not available but Apptainer/Singularity is:
+./scripts/build_apptainer_image.sh sc-construction-using-msmt-csd.sif
+export SC_MSMT_CSD_SIF=$PWD/sc-construction-using-msmt-csd.sif
 
 export FS_LICENSE=/path/to/freesurfer/license.txt
 export PE_DIR=AP

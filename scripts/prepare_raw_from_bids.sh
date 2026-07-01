@@ -11,7 +11,8 @@ BIDS_DIR=$1
 SUBJECT_ID=$2
 SESSION_ID=$3
 RAW_OUT_DIR=$4
-IMAGE="${SC_MSMT_CSD_IMAGE:-martah/sc-construction-using-msmt-csd}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/container_runtime.sh"
 
 SUB_SES_DIR="${BIDS_DIR}/${SUBJECT_ID}/${SESSION_ID}"
 DWI_BASE="${SUB_SES_DIR}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi"
@@ -38,19 +39,19 @@ else
   echo "WARN: ${DWI_BASE}.json is missing; converting DWI with bvec/bval only." >&2
 fi
 
-docker run --rm \
-  -v "$(cd "$BIDS_DIR" && pwd)":/bids:ro \
-  -v "$(cd "$RAW_OUT_DIR" && pwd)":/raw \
-  "$IMAGE" \
+container_exec \
+  "$(cd "$BIDS_DIR" && pwd):/bids:ro" \
+  "$(cd "$RAW_OUT_DIR" && pwd):/raw" \
+  -- \
   mrconvert "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.nii.gz" /raw/dwi.mif \
     -fslgrad "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.bvec" \
              "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.bval" \
     "${json_args[@]}" -force
 
-docker run --rm \
-  -v "$(cd "$BIDS_DIR" && pwd)":/bids:ro \
-  -v "$(cd "$RAW_OUT_DIR" && pwd)":/raw \
-  "$IMAGE" \
+container_exec \
+  "$(cd "$BIDS_DIR" && pwd):/bids:ro" \
+  "$(cd "$RAW_OUT_DIR" && pwd):/raw" \
+  -- \
   mrconvert "/bids/${SUBJECT_ID}/${SESSION_ID}/anat/${SUBJECT_ID}_${SESSION_ID}_T1w.nii.gz" /raw/T1w.mif -force
 
 echo "Prepared MRtrix inputs:"
