@@ -54,13 +54,28 @@ export CONTAINER_RUNTIME=native
 ```
 
 Native mode requires all commands used by the pipeline to already be installed
-and available on `PATH`: MRtrix3, FSL, FreeSurfer, and ANTs. Run `preflight.sh`
-to see the exact missing commands.
+and available on `PATH`: MRtrix3, FSL, FreeSurfer, and either ANTs or the FSL
+bias-correction fallback. Run `preflight.sh` to see the exact missing commands.
+
+On native Linux installs, you can also source the helper:
+
+```bash
+source scripts/setup_env.sh
+```
+
+This auto-detects common FreeSurfer/FSL/ANTs locations, including
+`/usr/local/freesurfer-6.0.0/license.txt`.
+
+If ANTs is not installed but FSL is available, try:
+
+```bash
+export BIAS_BACKEND=fsl
+```
 
 Set:
 
 ```bash
-export FS_LICENSE=/path/to/license.txt
+export FS_LICENSE=/usr/local/freesurfer-6.0.0/license.txt
 ```
 
 Optional settings:
@@ -69,6 +84,7 @@ Optional settings:
 export PE_DIR=AP
 export TCK_SELECT=100k
 export FS_OPENMP=4
+export BIAS_BACKEND=ants
 ```
 
 Use `TCK_SELECT=100k` for smoke testing. Use `1m` or `10m` only after a
@@ -86,7 +102,7 @@ bval, and JSON sidecar files.
 ## Preflight
 
 ```bash
-./scripts/preflight.sh /path/to/ds007857 sub-mindb107 ses-placebo
+./scripts/preflight.sh /nfs/tpolk/mind/Echo/openneuro/bids sub-mindb107 ses-placebo
 ```
 
 This checks that Docker, FreeSurfer license, DWI files, and T1w input are
@@ -97,12 +113,12 @@ for the required MRtrix3/FSL/FreeSurfer/ANTs commands.
 ## Run One Subject
 
 ```bash
-export FS_LICENSE=/path/to/license.txt
+export FS_LICENSE=/usr/local/freesurfer-6.0.0/license.txt
 export PE_DIR=AP
 export TCK_SELECT=100k
 
 ./scripts/run_mind_subject.sh \
-  /path/to/ds007857 \
+  /nfs/tpolk/mind/Echo/openneuro/bids \
   sub-mindb107 \
   ses-placebo \
   /scratch/mind-sc

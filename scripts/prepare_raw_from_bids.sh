@@ -34,25 +34,37 @@ mkdir -p "$RAW_OUT_DIR"
 
 json_args=()
 if [[ -f "${DWI_BASE}.json" ]]; then
-  json_args=(-json_import "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.json")
+  if [[ "$(container_runtime)" == native ]]; then
+    json_args=(-json_import "${DWI_BASE}.json")
+  else
+    json_args=(-json_import "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.json")
+  fi
 else
   echo "WARN: ${DWI_BASE}.json is missing; converting DWI with bvec/bval only." >&2
 fi
 
-container_exec \
-  "$(cd "$BIDS_DIR" && pwd):/bids:ro" \
-  "$(cd "$RAW_OUT_DIR" && pwd):/raw" \
-  -- \
-  mrconvert "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.nii.gz" /raw/dwi.mif \
-    -fslgrad "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.bvec" \
-             "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.bval" \
+if [[ "$(container_runtime)" == native ]]; then
+  mrconvert "${DWI_BASE}.nii.gz" "${RAW_OUT_DIR}/dwi.mif" \
+    -fslgrad "${DWI_BASE}.bvec" "${DWI_BASE}.bval" \
     "${json_args[@]}" -force
 
-container_exec \
-  "$(cd "$BIDS_DIR" && pwd):/bids:ro" \
-  "$(cd "$RAW_OUT_DIR" && pwd):/raw" \
-  -- \
-  mrconvert "/bids/${SUBJECT_ID}/${SESSION_ID}/anat/${SUBJECT_ID}_${SESSION_ID}_T1w.nii.gz" /raw/T1w.mif -force
+  mrconvert "${T1_BASE}.nii.gz" "${RAW_OUT_DIR}/T1w.mif" -force
+else
+  container_exec \
+    "$(cd "$BIDS_DIR" && pwd):/bids:ro" \
+    "$(cd "$RAW_OUT_DIR" && pwd):/raw" \
+    -- \
+    mrconvert "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.nii.gz" /raw/dwi.mif \
+      -fslgrad "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.bvec" \
+               "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.bval" \
+      "${json_args[@]}" -force
+
+  container_exec \
+    "$(cd "$BIDS_DIR" && pwd):/bids:ro" \
+    "$(cd "$RAW_OUT_DIR" && pwd):/raw" \
+    -- \
+    mrconvert "/bids/${SUBJECT_ID}/${SESSION_ID}/anat/${SUBJECT_ID}_${SESSION_ID}_T1w.nii.gz" /raw/T1w.mif -force
+fi
 
 echo "Prepared MRtrix inputs:"
 echo "  ${RAW_OUT_DIR}/dwi.mif"

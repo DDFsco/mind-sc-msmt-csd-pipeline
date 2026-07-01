@@ -13,6 +13,33 @@ SUBJECTID=$3
 PE_DIR="${PE_DIR:-AP}"
 TCK_SELECT="${TCK_SELECT:-100k}"
 FS_OPENMP="${FS_OPENMP:-4}"
+BIAS_BACKEND="${BIAS_BACKEND:-ants}"
+
+find_mrtrix_fs_default() {
+  local candidate
+  for candidate in \
+    "${MRTRIX_FS_DEFAULT:-}" \
+    /opt/mrtrix3/share/mrtrix3/labelconvert/fs_default.txt \
+    /usr/local/mrtrix3/share/mrtrix3/labelconvert/fs_default.txt \
+    /usr/share/mrtrix3/labelconvert/fs_default.txt; do
+    if [[ -n "$candidate" && -f "$candidate" ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  if command -v labelconvert >/dev/null 2>&1; then
+    local prefix
+    prefix="$(cd "$(dirname "$(command -v labelconvert)")/.." && pwd)"
+    candidate="${prefix}/share/mrtrix3/labelconvert/fs_default.txt"
+    if [[ -f "$candidate" ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  fi
+
+  return 1
+}
 
 if [[ ! -f "${RAWDIR}/dwi.mif" || ! -f "${RAWDIR}/T1w.mif" ]]; then
   echo "Required raw inputs not found. Expected ${RAWDIR}/dwi.mif and ${RAWDIR}/T1w.mif" >&2
@@ -20,6 +47,12 @@ if [[ ! -f "${RAWDIR}/dwi.mif" || ! -f "${RAWDIR}/T1w.mif" ]]; then
 fi
 
 mkdir -p "$DERIVDIR"
+export SUBJECTS_DIR="${SUBJECTS_DIR:-${DERIVDIR}/subjects}"
+mkdir -p "$SUBJECTS_DIR"
+MRTRIX_FS_DEFAULT="$(find_mrtrix_fs_default)" || {
+  echo "MRtrix fs_default.txt was not found. Set MRTRIX_FS_DEFAULT to its full path." >&2
+  exit 1
+}
 
 mrconvert "${RAWDIR}/T1w.mif" "${DERIVDIR}/T1w.nii" -force
 
@@ -38,20 +71,29 @@ dwifslpreproc "${DERIVDIR}/dwi_den_unr.mif" "${DERIVDIR}/dwi_den_unr_preproc.mif
   -pe_dir "$PE_DIR" -rpe_none \
   -eddy_options " --repol" -force
 
-dwibiascorrect ants "${DERIVDIR}/dwi_den_unr_preproc.mif" "${DERIVDIR}/dwi_den_unr_preproc_bc.mif" \
+dwibiascorrect "$BIAS_BACKEND" "${DERIVDIR}/dwi_den_unr_preproc.mif" "${DERIVDIR}/dwi_den_unr_preproc_bc.mif" \
   -bias "${DERIVDIR}/bias.mif" -force
 
 dwiextract "${DERIVDIR}/dwi_den_unr_preproc_bc.mif" - -bzero | \
   mrmath - mean "${DERIVDIR}/mean_b0_preproc.nii" -axis 3 -force
 
-N4BiasFieldCorrection -d 3 -i "${DERIVDIR}/T1w.nii" -s 2 -o "${DERIVDIR}/T1w_bc.nii"
+T1_BC="${DERIVDIR}/T1w_bc.nii"
+if command -v N4BiasFieldCorrection >/dev/null 2>&1; then
+  N4BiasFieldCorrection -d 3 -i "${DERIVDIR}/T1w.nii" -s 2 -o "$T1_BC"
+elif command -v fast >/dev/null 2>&1; then
+  fast -B -o "${DERIVDIR}/T1w_fast" "${DERIVDIR}/T1w.nii"
+  T1_BC="${DERIVDIR}/T1w_fast_restore.nii.gz"
+else
+  echo "Neither N4BiasFieldCorrection nor FSL fast was found for T1 bias correction." >&2
+  exit 1
+fi
 
-flirt -in "${DERIVDIR}/mean_b0_preproc.nii" -ref "${DERIVDIR}/T1w_bc.nii" \
+flirt -in "${DERIVDIR}/mean_b0_preproc.nii" -ref "$T1_BC" \
   -dof 6 -cost normmi \
   -omat "${DERIVDIR}/diff2struct_fsl.mat"
 
 transformconvert "${DERIVDIR}/diff2struct_fsl.mat" "${DERIVDIR}/mean_b0_preproc.nii" \
-  "${DERIVDIR}/T1w_bc.nii" flirt_import "${DERIVDIR}/diff2struct_mrtrix.txt" -force
+  "$T1_BC" flirt_import "${DERIVDIR}/diff2struct_mrtrix.txt" -force
 
 mrtransform "${DERIVDIR}/dwi_den_unr_preproc_bc.mif" "${DERIVDIR}/dwi_den_unr_preproc_bc_coreg.mif" \
   -linear "${DERIVDIR}/diff2struct_mrtrix.txt" -force
@@ -89,7 +131,7 @@ tcksift2 "${DERIVDIR}/tracks_${TCK_SELECT}.tck" "${DERIVDIR}/wmfod_norm.mif" "${
 
 labelconvert "${DERIVDIR}/freesurfer/mri/aparc+aseg.mgz" \
   "${FREESURFER_HOME}/FreeSurferColorLUT.txt" \
-  /opt/mrtrix3/share/mrtrix3/labelconvert/fs_default.txt \
+  "$MRTRIX_FS_DEFAULT" \
   "${DERIVDIR}/DK_parcels.mif" -force
 
 tck2connectome "${DERIVDIR}/tracks_${TCK_SELECT}.tck" "${DERIVDIR}/DK_parcels.mif" "${DERIVDIR}/dk.csv" \

@@ -103,6 +103,32 @@ container_exec() {
   esac
 }
 
+find_mrtrix_fs_default() {
+  local candidate
+  for candidate in \
+    "${MRTRIX_FS_DEFAULT:-}" \
+    /opt/mrtrix3/share/mrtrix3/labelconvert/fs_default.txt \
+    /usr/local/mrtrix3/share/mrtrix3/labelconvert/fs_default.txt \
+    /usr/share/mrtrix3/labelconvert/fs_default.txt; do
+    if [[ -n "$candidate" && -f "$candidate" ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  if command -v labelconvert >/dev/null 2>&1; then
+    local prefix
+    prefix="$(cd "$(dirname "$(command -v labelconvert)")/.." && pwd)"
+    candidate="${prefix}/share/mrtrix3/labelconvert/fs_default.txt"
+    if [[ -f "$candidate" ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
 native_dependency_check() {
   local missing=0
   local commands=(
@@ -113,7 +139,6 @@ native_dependency_check() {
     dwibiascorrect
     dwiextract
     mrmath
-    N4BiasFieldCorrection
     flirt
     transformconvert
     mrtransform
@@ -128,6 +153,11 @@ native_dependency_check() {
     tck2connectome
     recon-all
   )
+  if [[ "${BIAS_BACKEND:-ants}" == ants ]]; then
+    commands+=(N4BiasFieldCorrection)
+  elif [[ "${BIAS_BACKEND:-ants}" == fsl ]]; then
+    commands+=(fast)
+  fi
   for cmd in "${commands[@]}"; do
     if command -v "$cmd" >/dev/null 2>&1; then
       echo "OK: $cmd"

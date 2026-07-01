@@ -12,6 +12,24 @@ SESSION_ID="${3:-ses-placebo}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/container_runtime.sh"
 
+if [[ "${CONTAINER_RUNTIME:-}" == native && -f "${SCRIPT_DIR}/setup_env.sh" ]]; then
+  MIND_SETUP_QUIET=1 source "${SCRIPT_DIR}/setup_env.sh"
+fi
+
+if [[ -z "${FS_LICENSE:-}" ]]; then
+  for candidate in \
+    "${FREESURFER_HOME:+${FREESURFER_HOME}/license.txt}" \
+    /usr/local/freesurfer-6.0.0/license.txt \
+    /usr/local/freesurfer/license.txt \
+    /opt/freesurfer/license.txt \
+    "$HOME/license.txt"; do
+    if [[ -n "$candidate" && -f "$candidate" ]]; then
+      export FS_LICENSE="$candidate"
+      break
+    fi
+  done
+fi
+
 fail=0
 check_file() {
   if [[ -f "$1" ]]; then
@@ -63,9 +81,22 @@ elif [[ "$RUNTIME" == apptainer || "$RUNTIME" == singularity ]]; then
   fi
 elif [[ "$RUNTIME" == native ]]; then
   echo "OK: native runtime selected"
+  if [[ -n "${FREESURFER_HOME:-}" && -f "${FREESURFER_HOME}/FreeSurferColorLUT.txt" ]]; then
+    echo "OK: FREESURFER_HOME=$FREESURFER_HOME"
+  else
+    echo "WARN: FREESURFER_HOME is not set or FreeSurferColorLUT.txt was not found."
+    echo "      Try: source scripts/setup_env.sh"
+  fi
   if native_dependency_check; then
     echo "OK: native neuroimaging dependencies found"
   else
+    fail=1
+  fi
+  if mrtrix_fs_default="$(find_mrtrix_fs_default)"; then
+    echo "OK: MRtrix fs_default.txt=$mrtrix_fs_default"
+  else
+    echo "MISSING: MRtrix fs_default.txt was not found."
+    echo "         Set MRTRIX_FS_DEFAULT=/path/to/fs_default.txt"
     fail=1
   fi
 else
