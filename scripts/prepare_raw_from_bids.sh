@@ -33,6 +33,8 @@ require_file "${T1_BASE}.nii.gz"
 mkdir -p "$RAW_OUT_DIR"
 
 UNIT_BVEC="${RAW_OUT_DIR}/dwi_unit.bvec"
+# GE/dcm2niix exports can contain non-unit bvecs. MRtrix otherwise scales
+# b-values by |g|^2, which turns nominal shells into non-shelled b-values.
 awk '
   NR == 1 { for (i = 1; i <= NF; i++) x[i] = $i; n = NF }
   NR == 2 { for (i = 1; i <= NF; i++) y[i] = $i }
@@ -74,6 +76,7 @@ fi
 if [[ "$(container_runtime)" == native ]]; then
   mrconvert "${DWI_BASE}.nii.gz" "${RAW_OUT_DIR}/dwi.mif" \
     -fslgrad "$UNIT_BVEC" "${DWI_BASE}.bval" \
+    -bvalue_scaling false \
     "${json_args[@]}" -force
 
   mrconvert "${T1_BASE}.nii.gz" "${RAW_OUT_DIR}/T1w.mif" -force
@@ -85,6 +88,7 @@ else
     mrconvert "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.nii.gz" /raw/dwi.mif \
       -fslgrad /raw/dwi_unit.bvec \
                "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.bval" \
+      -bvalue_scaling false \
       "${json_args[@]}" -force
 
   container_exec \
