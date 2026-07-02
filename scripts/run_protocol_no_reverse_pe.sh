@@ -63,7 +63,11 @@ progress 2 "FreeSurfer recon-all"
 echo "Using SUBJECTS_DIR=${SUBJECTS_DIR}"
 mrconvert "${RAWDIR}/T1w.mif" "${DERIVDIR}/T1w.nii" -force
 
-recon-all -s "${SUBJECTID}" -i "${DERIVDIR}/T1w.nii" -all -openmp "$FS_OPENMP"
+if [[ -f "${SUBJECTS_DIR}/${SUBJECTID}/scripts/recon-all.done" ]]; then
+  echo "Reusing completed FreeSurfer subject: ${SUBJECTS_DIR}/${SUBJECTID}"
+else
+  recon-all -s "${SUBJECTID}" -i "${DERIVDIR}/T1w.nii" -all -openmp "$FS_OPENMP"
+fi
 rm -rf "${DERIVDIR}/freesurfer"
 cp -r "${SUBJECTS_DIR}/${SUBJECTID}" "${DERIVDIR}/freesurfer"
 
