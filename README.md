@@ -110,6 +110,10 @@ available. If Docker is not installed, it checks for Apptainer/Singularity and
 for the `.sif` image configured by `SC_MSMT_CSD_SIF`. In native mode, it checks
 for the required MRtrix3/FSL/FreeSurfer/ANTs commands.
 
+The default eddy options are `--repol --slm=linear --data_is_shelled`, which
+keeps FSL eddy from rejecting the MiND multi-shell acquisition because the
+lower-b shells have fewer directions than the b=3000 shell.
+
 ## Run One Subject
 
 ```bash

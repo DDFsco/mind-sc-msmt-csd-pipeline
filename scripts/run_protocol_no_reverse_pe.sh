@@ -14,7 +14,7 @@ PE_DIR="${PE_DIR:-AP}"
 TCK_SELECT="${TCK_SELECT:-100k}"
 FS_OPENMP="${FS_OPENMP:-4}"
 BIAS_BACKEND="${BIAS_BACKEND:-ants}"
-EDDY_OPTIONS="${EDDY_OPTIONS:- --repol --slm=linear}"
+EDDY_OPTIONS="${EDDY_OPTIONS:- --repol --slm=linear --data_is_shelled}"
 
 progress() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$1/14] $2"

@@ -108,6 +108,10 @@ bval, and JSON sidecar files.
 This checks that a supported container runtime, FreeSurfer license, DWI files,
 and T1w input are available.
 
+The default eddy options are `--repol --slm=linear --data_is_shelled`, which
+keeps FSL eddy from rejecting the MiND multi-shell acquisition because the
+lower-b shells have fewer directions than the b=3000 shell.
+
 ## Run One Subject
 
 ```bash
