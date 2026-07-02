@@ -14,6 +14,7 @@ PE_DIR="${PE_DIR:-AP}"
 TCK_SELECT="${TCK_SELECT:-100k}"
 FS_OPENMP="${FS_OPENMP:-4}"
 BIAS_BACKEND="${BIAS_BACKEND:-ants}"
+EDDY_OPTIONS="${EDDY_OPTIONS:- --repol --slm=linear}"
 
 progress() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$1/14] $2"
@@ -78,7 +79,7 @@ mrdegibbs "${DERIVDIR}/dwi_den.mif" "${DERIVDIR}/dwi_den_unr.mif" -force
 progress 5 "DWI eddy preprocessing without reverse PE"
 dwifslpreproc "${DERIVDIR}/dwi_den_unr.mif" "${DERIVDIR}/dwi_den_unr_preproc.mif" \
   -pe_dir "$PE_DIR" -rpe_none \
-  -eddy_options " --repol" -force
+  -eddy_options "$EDDY_OPTIONS" -force
 
 progress 6 "DWI bias correction (${BIAS_BACKEND})"
 dwibiascorrect "$BIAS_BACKEND" "${DERIVDIR}/dwi_den_unr_preproc.mif" "${DERIVDIR}/dwi_den_unr_preproc_bc.mif" \

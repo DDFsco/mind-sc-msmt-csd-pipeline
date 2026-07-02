@@ -32,6 +32,34 @@ require_file "${T1_BASE}.nii.gz"
 
 mkdir -p "$RAW_OUT_DIR"
 
+UNIT_BVEC="${RAW_OUT_DIR}/dwi_unit.bvec"
+awk '
+  NR == 1 { for (i = 1; i <= NF; i++) x[i] = $i; n = NF }
+  NR == 2 { for (i = 1; i <= NF; i++) y[i] = $i }
+  NR == 3 { for (i = 1; i <= NF; i++) z[i] = $i }
+  END {
+    if (NR != 3) {
+      print "Expected FSL bvec file with exactly 3 rows" > "/dev/stderr"
+      exit 1
+    }
+    for (i = 1; i <= n; i++) {
+      norm = sqrt(x[i] * x[i] + y[i] * y[i] + z[i] * z[i])
+      if (norm > 0) {
+        x[i] /= norm
+        y[i] /= norm
+        z[i] /= norm
+      }
+    }
+    for (i = 1; i <= n; i++) printf "%s%.10g", (i == 1 ? "" : " "), x[i]
+    printf "\n"
+    for (i = 1; i <= n; i++) printf "%s%.10g", (i == 1 ? "" : " "), y[i]
+    printf "\n"
+    for (i = 1; i <= n; i++) printf "%s%.10g", (i == 1 ? "" : " "), z[i]
+    printf "\n"
+  }
+' "${DWI_BASE}.bvec" > "$UNIT_BVEC"
+echo "Prepared unit-normalized bvecs: $UNIT_BVEC"
+
 json_args=()
 if [[ -f "${DWI_BASE}.json" ]]; then
   if [[ "$(container_runtime)" == native ]]; then
@@ -45,7 +73,7 @@ fi
 
 if [[ "$(container_runtime)" == native ]]; then
   mrconvert "${DWI_BASE}.nii.gz" "${RAW_OUT_DIR}/dwi.mif" \
-    -fslgrad "${DWI_BASE}.bvec" "${DWI_BASE}.bval" \
+    -fslgrad "$UNIT_BVEC" "${DWI_BASE}.bval" \
     "${json_args[@]}" -force
 
   mrconvert "${T1_BASE}.nii.gz" "${RAW_OUT_DIR}/T1w.mif" -force
@@ -55,7 +83,7 @@ else
     "$(cd "$RAW_OUT_DIR" && pwd):/raw" \
     -- \
     mrconvert "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.nii.gz" /raw/dwi.mif \
-      -fslgrad "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.bvec" \
+      -fslgrad /raw/dwi_unit.bvec \
                "/bids/${SUBJECT_ID}/${SESSION_ID}/dwi/${SUBJECT_ID}_${SESSION_ID}_dwi.bval" \
       "${json_args[@]}" -force
 
